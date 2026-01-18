@@ -1,0 +1,29 @@
+{
+  "name": {
+    "en": "NFC Tag"
+  },
+  "class": "other",
+  "capabilities": [],
+  "platforms": [
+    "local"
+  ],
+  "connectivity": [],
+  "images": {
+    "small": "/drivers/nfc-tag/assets/images/small.png",
+    "large": "/drivers/nfc-tag/assets/images/large.png",
+    "xlarge": "/drivers/nfc-tag/assets/images/xlarge.png"
+  },
+  "pair": [
+    {
+      "id": "list_devices",
+      "template": "list_devices",
+      "navigation": {
+        "next": "add_devices"
+      }
+    },
+    {
+      "id": "add_devices",
+      "template": "add_devices"
+    }
+  ]
+}

@@ -61,5 +61,124 @@
       "path": "/trigger",
       "public": true
     }
-  }
+  },
+  "flow": {
+    "triggers": [
+      {
+        "id": "nfc_tag_scanned",
+        "title": {
+          "en": "NFC tag scanned"
+        },
+        "hint": {
+          "en": "This card triggers when any NFC tag is scanned"
+        },
+        "tokens": [
+          {
+            "name": "tag_id",
+            "type": "string",
+            "title": {
+              "en": "Tag ID"
+            },
+            "example": "04:1A:2B:3C:4D:5E:6F"
+          },
+          {
+            "name": "tag_name",
+            "type": "string",
+            "title": {
+              "en": "Tag Name"
+            },
+            "example": "Living Room"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=nfc-tag"
+          },
+          {
+            "name": "tag_id",
+            "type": "text",
+            "placeholder": {
+              "en": "Tag ID (optional)"
+            },
+            "required": false
+          }
+        ]
+      },
+      {
+        "id": "specific_nfc_tag_scanned",
+        "title": {
+          "en": "Specific NFC tag scanned"
+        },
+        "hint": {
+          "en": "This card triggers when a specific configured NFC tag is scanned"
+        },
+        "tokens": [
+          {
+            "name": "tag_id",
+            "type": "string",
+            "title": {
+              "en": "Tag ID"
+            },
+            "example": "04:1A:2B:3C:4D:5E:6F"
+          },
+          {
+            "name": "tag_name",
+            "type": "string",
+            "title": {
+              "en": "Tag Name"
+            },
+            "example": "Living Room"
+          }
+        ],
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=nfc-tag"
+          },
+          {
+            "name": "configured_tag",
+            "type": "autocomplete",
+            "placeholder": {
+              "en": "Select a tag"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "drivers": [
+    {
+      "name": {
+        "en": "NFC Tag"
+      },
+      "class": "other",
+      "capabilities": [],
+      "platforms": [
+        "local"
+      ],
+      "connectivity": [],
+      "images": {
+        "small": "/drivers/nfc-tag/assets/images/small.png",
+        "large": "/drivers/nfc-tag/assets/images/large.png",
+        "xlarge": "/drivers/nfc-tag/assets/images/xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "list_devices",
+          "template": "list_devices",
+          "navigation": {
+            "next": "add_devices"
+          }
+        },
+        {
+          "id": "add_devices",
+          "template": "add_devices"
+        }
+      ],
+      "id": "nfc-tag"
+    }
+  ]
 }
