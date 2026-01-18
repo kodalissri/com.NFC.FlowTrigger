@@ -1,0 +1,157 @@
+name: Release and Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      changelog:
+        description: 'Changelog entry (describe what changed)'
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Release and Publish to Homey App Store
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Homey CLI
+        run: npm install -g homey
+
+      - name: Bump version
+        id: version
+        run: |
+          # Bump version in package.json
+          npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
+
+          # Get the new version
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+          # Update version in .homeycompose/app.json
+          node -e "
+            const fs = require('fs');
+            const appJson = JSON.parse(fs.readFileSync('.homeycompose/app.json', 'utf8'));
+            appJson.version = '$NEW_VERSION';
+            fs.writeFileSync('.homeycompose/app.json', JSON.stringify(appJson, null, 2) + '\n');
+          "
+
+      - name: Update Changelog
+        run: |
+          # Create CHANGELOG.md if it doesn't exist
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# Changelog" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+            echo "All notable changes to this project will be documented in this file." >> CHANGELOG.md
+            echo "" >> CHANGELOG.md
+          fi
+
+          # Prepare changelog entry
+          DATE=$(date +%Y-%m-%d)
+          VERSION="${{ steps.version.outputs.new_version }}"
+          CHANGELOG_ENTRY="${{ github.event.inputs.changelog }}"
+
+          # Create temporary file with new entry
+          {
+            head -n 5 CHANGELOG.md
+            echo "## [$VERSION] - $DATE"
+            echo ""
+            echo "$CHANGELOG_ENTRY"
+            echo ""
+            tail -n +6 CHANGELOG.md
+          } > CHANGELOG.tmp
+
+          mv CHANGELOG.tmp CHANGELOG.md
+
+      - name: Create .homeychangelog.json
+        run: |
+          VERSION="${{ steps.version.outputs.new_version }}"
+          CHANGELOG_ENTRY="${{ github.event.inputs.changelog }}"
+
+          # Create or update .homeychangelog.json
+          node -e "
+            const fs = require('fs');
+            let changelog = {};
+
+            if (fs.existsSync('.homeychangelog.json')) {
+              changelog = JSON.parse(fs.readFileSync('.homeychangelog.json', 'utf8'));
+            }
+
+            changelog['$VERSION'] = {
+              en: \`$CHANGELOG_ENTRY\`
+            };
+
+            fs.writeFileSync('.homeychangelog.json', JSON.stringify(changelog, null, 2) + '\n');
+          "
+
+      - name: Build app
+        run: homey app build
+
+      - name: Validate app
+        run: homey app validate
+
+      - name: Commit version bump and changelog
+        run: |
+          git add package.json package-lock.json .homeycompose/app.json CHANGELOG.md .homeychangelog.json
+          git commit -m "chore: release v${{ steps.version.outputs.new_version }}"
+          git tag -a "v${{ steps.version.outputs.new_version }}" -m "Release v${{ steps.version.outputs.new_version }}"
+
+      - name: Push changes
+        run: |
+          git push origin main
+          git push origin "v${{ steps.version.outputs.new_version }}"
+
+      - name: Publish to Homey App Store
+        env:
+          HOMEY_TOKEN: ${{ secrets.HOMEY_TOKEN }}
+        run: |
+          # Login to Homey
+          homey login --token $HOMEY_TOKEN
+
+          # Publish the app
+          homey app publish
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.new_version }}
+          release_name: Release v${{ steps.version.outputs.new_version }}
+          body: |
+            ## Changes
+
+            ${{ github.event.inputs.changelog }}
+
+            ## Installation
+
+            This version has been published to the Homey App Store.
+          draft: false
+          prerelease: false

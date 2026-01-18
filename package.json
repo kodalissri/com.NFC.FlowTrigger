@@ -1,0 +1,25 @@
+{
+  "name": "com.yourdomain.nfc-flow-trigger",
+  "version": "1.0.0",
+  "description": "Trigger Homey flows by scanning NFC tags with your mobile phone",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "nfc",
+    "tag",
+    "trigger",
+    "flow",
+    "automation"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "homey": "^3.0.0"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}

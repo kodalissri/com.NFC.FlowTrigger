@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>NFC Flow Trigger Settings</title>
+    <script type="text/javascript" src="/homey.js" data-origin="settings"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 0;
+            font-size: 1.2em;
+        }
+
+        .webhook-url {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            border: 2px solid #4A90E2;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+
+        .tag-list {
+            margin-top: 15px;
+        }
+
+        .tag-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #4A90E2;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tag-info {
+            flex: 1;
+        }
+
+        .tag-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .tag-id {
+            color: #666;
+            font-size: 0.9em;
+            font-family: 'Courier New', monospace;
+        }
+
+        .add-tag-form {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 15px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+
+        button {
+            background-color: #4A90E2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #357ABD;
+        }
+
+        button.delete {
+            background-color: #dc3545;
+        }
+
+        button.delete:hover {
+            background-color: #c82333;
+        }
+
+        button.copy {
+            background-color: #28a745;
+            margin-left: 10px;
+        }
+
+        button.copy:hover {
+            background-color: #218838;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #4A90E2;
+            margin-bottom: 20px;
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+            color: #1a5490;
+        }
+
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin: 8px 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <h1>NFC Flow Trigger Settings</h1>
+
+    <div class="section">
+        <h2>Webhook URL</h2>
+        <p>Use this URL to trigger NFC tag scans from your mobile phone:</p>
+        <div class="webhook-url" id="webhookUrl">Loading...</div>
+        <button class="copy" onclick="copyWebhookUrl()">Copy URL</button>
+    </div>
+
+    <div class="section">
+        <div class="instructions">
+            <h3>📱 How to Setup NFC Tags with Your Phone</h3>
+            <ol>
+                <li><strong>Get an NFC app:</strong> Install an NFC app like "NFC Tools" (iOS/Android) or "Trigger" (Android)</li>
+                <li><strong>Write to NFC tag:</strong> In the app, create a new task that sends a web request (HTTP/HTTPS)</li>
+                <li><strong>Configure the URL:</strong> Use the webhook URL above and add <code>?tag_id=YOUR_TAG_ID</code> at the end</li>
+                <li><strong>Example:</strong> <code>https://your-homey/api/app/com.yourdomain.nfc-flow-trigger/trigger?tag_id=bedroom</code></li>
+                <li><strong>Write to tag:</strong> Hold your phone to the NFC tag to write the URL</li>
+                <li><strong>Add tag below:</strong> Add the same tag ID in the form below to give it a friendly name</li>
+                <li><strong>Create flows:</strong> Use the "NFC tag scanned" flow cards in Homey to trigger actions</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Configured NFC Tags</h2>
+        <div id="tagList" class="tag-list"></div>
+
+        <div class="add-tag-form">
+            <h3>Add New Tag</h3>
+            <label for="newTagId">Tag ID:</label>
+            <input type="text" id="newTagId" placeholder="e.g., bedroom or 04:1A:2B:3C:4D:5E:6F">
+
+            <label for="newTagName">Tag Name:</label>
+            <input type="text" id="newTagName" placeholder="e.g., Bedroom">
+
+            <button onclick="addTag()">Add Tag</button>
+        </div>
+    </div>
+
+    <script>
+        let tags = {};
+        let webhookUrl = '';
+
+        async function onHomeyReady(homey) {
+            console.log('Homey is ready!');
+
+            // Get Homey local URL
+            const localUrl = await homey.api('GET', '/');
+            const homeyUrl = localUrl.cloudId ?
+                `https://${localUrl.cloudId}.homey.homeycloud.com` :
+                `http://${await homey.system.getLocalAddress()}`;
+
+            webhookUrl = `${homeyUrl}/api/app/com.yourdomain.nfc-flow-trigger/trigger?tag_id=YOUR_TAG_ID`;
+            document.getElementById('webhookUrl').textContent = webhookUrl;
+
+            // Load tags
+            await loadTags();
+        }
+
+        async function loadTags() {
+            try {
+                tags = await Homey.api('GET', '/tags');
+                renderTags();
+            } catch (error) {
+                console.error('Error loading tags:', error);
+                tags = {};
+                renderTags();
+            }
+        }
+
+        function renderTags() {
+            const tagList = document.getElementById('tagList');
+
+            if (Object.keys(tags).length === 0) {
+                tagList.innerHTML = '<div class="empty-state">No tags configured yet. Add your first tag below!</div>';
+                return;
+            }
+
+            tagList.innerHTML = '';
+
+            for (const [tagId, tagData] of Object.entries(tags)) {
+                const tagItem = document.createElement('div');
+                tagItem.className = 'tag-item';
+
+                tagItem.innerHTML = `
+                    <div class="tag-info">
+                        <div class="tag-name">${tagData.name}</div>
+                        <div class="tag-id">ID: ${tagId}</div>
+                    </div>
+                    <button class="delete" onclick="deleteTag('${tagId}')">Delete</button>
+                `;
+
+                tagList.appendChild(tagItem);
+            }
+        }
+
+        async function addTag() {
+            const tagId = document.getElementById('newTagId').value.trim();
+            const tagName = document.getElementById('newTagName').value.trim();
+
+            if (!tagId || !tagName) {
+                alert('Please enter both Tag ID and Tag Name');
+                return;
+            }
+
+            try {
+                tags = await Homey.api('POST', '/tags', {
+                    tag_id: tagId,
+                    tag_name: tagName
+                });
+
+                document.getElementById('newTagId').value = '';
+                document.getElementById('newTagName').value = '';
+
+                renderTags();
+                Homey.alert('Tag added successfully!');
+            } catch (error) {
+                console.error('Error adding tag:', error);
+                Homey.alert('Error adding tag: ' + error.message);
+            }
+        }
+
+        async function deleteTag(tagId) {
+            if (!confirm(`Are you sure you want to delete tag "${tags[tagId].name}"?`)) {
+                return;
+            }
+
+            try {
+                tags = await Homey.api('DELETE', `/tags/${tagId}`);
+                renderTags();
+                Homey.alert('Tag deleted successfully!');
+            } catch (error) {
+                console.error('Error deleting tag:', error);
+                Homey.alert('Error deleting tag: ' + error.message);
+            }
+        }
+
+        function copyWebhookUrl() {
+            navigator.clipboard.writeText(webhookUrl).then(() => {
+                alert('Webhook URL copied to clipboard!');
+            }).catch(err => {
+                console.error('Error copying to clipboard:', err);
+            });
+        }
+
+        Homey.ready();
+    </script>
+</body>
+</html>

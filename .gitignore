@@ -1,0 +1,14 @@
+node_modules/
+npm-debug.log
+.DS_Store
+*.log
+.env
+env.json
+locales/*.json
+
+
+# Added by Homey CLI
+/.homeybuild/
+
+# Build artifacts
+app.json

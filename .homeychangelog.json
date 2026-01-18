@@ -1,0 +1,5 @@
+{
+  "1.0.0": {
+    "en": "Initial release: NFC tag triggering via webhook, tag configuration and management, two flow trigger cards, settings page for tag management"
+  }
+}
