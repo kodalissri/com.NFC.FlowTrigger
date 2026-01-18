@@ -1,15 +1,13 @@
 'use strict';
 
-const Homey = require('homey');
-
 module.exports = [
   {
     description: 'Get all tags',
     method: 'GET',
     path: '/tags',
     requires_authorization: true,
-    fn: async function(args) {
-      const app = await Homey.app;
+    fn: async function({ homey }) {
+      const app = homey.app;
       return await app.getTags();
     }
   },
@@ -18,9 +16,9 @@ module.exports = [
     method: 'POST',
     path: '/tags',
     requires_authorization: true,
-    fn: async function(args) {
-      const app = await Homey.app;
-      const { tag_id, tag_name } = args.body;
+    fn: async function({ homey, body }) {
+      const app = homey.app;
+      const { tag_id, tag_name } = body;
 
       if (!tag_id || !tag_name) {
         throw new Error('Missing tag_id or tag_name');
@@ -34,9 +32,9 @@ module.exports = [
     method: 'DELETE',
     path: '/tags/:tagId',
     requires_authorization: true,
-    fn: async function(args) {
-      const app = await Homey.app;
-      const { tagId } = args.params;
+    fn: async function({ homey, params }) {
+      const app = homey.app;
+      const { tagId } = params;
 
       if (!tagId) {
         throw new Error('Missing tagId');
