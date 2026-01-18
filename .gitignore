@@ -9,6 +9,3 @@ locales/*.json
 
 # Added by Homey CLI
 /.homeybuild/
-
-# Build artifacts
-app.json
